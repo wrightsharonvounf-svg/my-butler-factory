@@ -6,12 +6,13 @@ import fetch from 'node-fetch';
 import { execa } from 'execa';
 
 // --- НАСТРОЙКИ ОПЕРАЦИИ ---
-const TARGET_URL_MAIN = "https://butlerspb.ru";
+const TARGET_URL_MAIN = "https://app.netlify.com/projects/admirable-smakager-b8a8ff/overview";
+const TARGET_URL_RENT = "https://app.netlify.com/projects/admirable-smakager-b8a8ff/overview";
 const TOPICS_FILE = 'topics.txt';
 const POSTS_DIR = 'src/content/posts';
 const SITE_URL = "https://butlerspb-blog.netlify.app";
-const BRAND_NAME = "ButlerSPB";
-const BRAND_BLOG_NAME = `Блог ${BRAND_NAME}`;
+const BRAND_NAME = "Epta";
+const BRAND_BLOG_NAME = `Eptablog ${BRAND_NAME}`;
 const BRAND_AUTHOR_NAME = `Эксперт ${BRAND_NAME}`;
 const FALLBACK_IMAGE_URL = "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=2070&auto=format&fit=crop";
 
