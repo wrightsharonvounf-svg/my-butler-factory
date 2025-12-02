@@ -6,8 +6,8 @@ import fetch from 'node-fetch';
 import { execa } from 'execa';
 
 // --- НАСТРОЙКИ ОПЕРАЦИИ ---
-const TARGET_URL_MAIN = "https://app.netlify.com/projects/admirable-smakager-b8a8ff/overview";
-const TARGET_URL_RENT = "https://app.netlify.com/projects/admirable-smakager-b8a8ff/overview";
+const TARGET_URL_MAIN = "https://admirable-smakager-b8a8ff.netlify.app";
+const TARGET_URL_RENT = "https://admirable-smakager-b8a8ff.netlify.app/blog";
 const TOPICS_FILE = 'topics.txt';
 const POSTS_DIR = 'src/content/posts';
 const SITE_URL = "https://butlerspb-blog.netlify.app";
