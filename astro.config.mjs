@@ -3,7 +3,7 @@ import { defineConfig } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://admirable-smakager-b8a8ff.netlify.app',
+  site: 'https://butlerspb-blog.netlify.app',
   // Убираем интеграцию sitemap, так как у нас есть свой postbuild.js
   // integrations: [sitemap()], 
   
