@@ -29,8 +29,7 @@ jobs:
       - name: Create thread matrix
         id: set_matrix
         run: |
-          MAX_THREADS=20
-          REQUESTED_THREADS=${{ github.event.inputs.threads || 5 }}
+          echo "matrix={\"thread\":[1]}" >> $GITHUB_OUTPUT
           
           if (( REQUESTED_THREADS > MAX_THREADS )); then
             echo "::warning::Запрошено больше потоков (${REQUESTED_THREADS}), чем доступно ключей (${MAX_THREADS}). Будет использовано ${MAX_THREADS}."
