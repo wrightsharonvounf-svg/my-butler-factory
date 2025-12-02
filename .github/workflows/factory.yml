@@ -13,12 +13,12 @@ on:
         - deepseek
       batch_size_per_thread:
         description: 'Сколько статей генерировать КАЖДЫМ потоком?'
-        required: false
-        default: '1'
+        required: true
+        default: '5'
       threads:
         description: 'Сколько потоков запустить ОДНОВРЕМЕННО (1-20)?'
-        required: false
-        default: 'gemini'
+        required: true
+        default: '5'
 
 jobs:
   prepare:
@@ -29,7 +29,8 @@ jobs:
       - name: Create thread matrix
         id: set_matrix
         run: |
-          echo "matrix={\"thread\":[1]}" >> $GITHUB_OUTPUT
+          MAX_THREADS=20
+          REQUESTED_THREADS=${{ github.event.inputs.threads || 5 }}
           
           if (( REQUESTED_THREADS > MAX_THREADS )); then
             echo "::warning::Запрошено больше потоков (${REQUESTED_THREADS}), чем доступно ключей (${MAX_THREADS}). Будет использовано ${MAX_THREADS}."
