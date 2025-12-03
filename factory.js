@@ -6,10 +6,10 @@ import fetch from 'node-fetch';
 import { execa } from 'execa';
 
 // --- НАСТРОЙКИ ОПЕРАЦИИ ---
-const TARGET_URL_MAIN = "https://butlerspb.ru";
+const TARGET_URL_MAIN = "https://zaebis.store";
 const TOPICS_FILE = 'topics.txt';
 const POSTS_DIR = 'src/content/posts';
-const SITE_URL = "https://butlerspb-blog.netlify.app";
+const SITE_URL = "https://zaebis.store";
 const BRAND_NAME = "ButlerSPB";
 const BRAND_BLOG_NAME = `Блог ${BRAND_NAME}`;
 const BRAND_AUTHOR_NAME = `Эксперт ${BRAND_NAME}`;
