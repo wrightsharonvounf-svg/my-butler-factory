@@ -297,4 +297,4 @@ console.log("File written successfully:", filePath);
 
 main();
 
-console.log("=== FACTORY.JS EXECUTION FINISFED ==="):
+console.log("=== FACTORY.JS EXECUTION FINISHED ===");
