@@ -223,26 +223,23 @@ async function main() {
         const allTopics = fileContent.split(/\r?\n/).map(topic => topic.trim()).filter(Boolean);
 
 console.log("DEBUG: Reading topics file:", TOPICS_FILE);
-console.log("DEBUG: File content length:", fileContent.length);
-console.log("DEBUG: All topics count:", allTopics.length);
-console.log("DEBUG: Sample topics:", allTopics.slice(0, 3));
         const postsDir = path.join(process.cwd(), 'src', 'content', 'posts');
+console.log("DEBUG: All topics count:", allTopics.length);
         await fs.mkdir(postsDir, { recursive: true });
         
-console.log("DEBUG: Existing files count:", existingFiles.length);
-console.log("DEBUG: Existing slugs count:", existingSlugs.length);
         const existingFiles = await fs.readdir(postsDir);
         const existingSlugs = existingFiles.map(file => file.replace('.md', ''));
+console.log("DEBUG: Posts directory ready");
         
+console.log("DEBUG: Existing files count:", existingFiles.length);
         let newTopics = allTopics.filter(topic => {
             const topicSlug = slugify(topic);
-console.log("DEBUG: New topics after filtering:", newTopics.length);
             return topicSlug && !existingSlugs.includes(topicSlug);
-console.log("DEBUG: Thread ID:", threadId, "Total threads:", totalThreads);
-console.log("DEBUG: Topics for this thread:", topicsForThisThread.length);
         });
+console.log("DEBUG: New topics after filtering:", newTopics.length);
 
         const topicsForThisThread = newTopics.filter((_, index) => index % totalThreads === (threadId - 1)).slice(0, BATCH_SIZE);
+console.log("DEBUG: Topics for this thread:", topicsForThisThread.length);
 
         if (topicsForThisThread.length === 0) {
             console.log(`[Поток #${threadId}] Нет новых тем для этого потока. Завершение.`);
