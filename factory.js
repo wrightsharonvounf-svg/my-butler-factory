@@ -220,21 +220,26 @@ async function main() {
         const totalThreads = parseInt(process.env.TOTAL_THREADS, 10) || 1;
         
         const fileContent = await fs.readFile(TOPICS_FILE, 'utf-8');
-console.log("=== ENTERING MAIN FUNCTION ===");
-console.log("Topics to process:", topics.length);
         const allTopics = fileContent.split(/\r?\n/).map(topic => topic.trim()).filter(Boolean);
 
-console.log("Posts directory created/exists:", postsDir);
+console.log("DEBUG: Reading topics file:", TOPICS_FILE);
+console.log("DEBUG: File content length:", fileContent.length);
+console.log("DEBUG: All topics count:", allTopics.length);
+console.log("DEBUG: Sample topics:", allTopics.slice(0, 3));
         const postsDir = path.join(process.cwd(), 'src', 'content', 'posts');
-console.log("Existing files count:", existingFiles.length);
         await fs.mkdir(postsDir, { recursive: true });
         
+console.log("DEBUG: Existing files count:", existingFiles.length);
+console.log("DEBUG: Existing slugs count:", existingSlugs.length);
         const existingFiles = await fs.readdir(postsDir);
         const existingSlugs = existingFiles.map(file => file.replace('.md', ''));
         
         let newTopics = allTopics.filter(topic => {
             const topicSlug = slugify(topic);
+console.log("DEBUG: New topics after filtering:", newTopics.length);
             return topicSlug && !existingSlugs.includes(topicSlug);
+console.log("DEBUG: Thread ID:", threadId, "Total threads:", totalThreads);
+console.log("DEBUG: Topics for this thread:", topicsForThisThread.length);
         });
 
         const topicsForThisThread = newTopics.filter((_, index) => index % totalThreads === (threadId - 1)).slice(0, BATCH_SIZE);
@@ -257,12 +262,10 @@ console.log("Existing files count:", existingFiles.length);
             } catch (e) { /* Игнорируем ошибки чтения */ }
         }
         
-console.log("About to write file:", filePath);
         for (const topic of topicsForThisThread) { 
             try {
                 const slug = slugify(topic);
                 if (!slug) continue;
-console.log("File written successfully:", filePath);
                 
                 const filePath = path.join(postsDir, `${slug}.md`);
 
@@ -296,5 +299,3 @@ console.log("File written successfully:", filePath);
 }
 
 main();
-
-console.log("=== FACTORY.JS EXECUTION FINISHED ===");
