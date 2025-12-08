@@ -221,9 +221,12 @@ async function main() {
         
         const fileContent = await fs.readFile(TOPICS_FILE, 'utf-8');
         const allTopics = fileContent.split(/\r?\n/).map(topic => topic.trim()).filter(Boolean);
+console.log("=== STARTING FILE GENERATION ===");
 
         const postsDir = path.join(process.cwd(), 'src', 'content', 'posts');
+console.log("Posts directory created/exists:", postsDir);
         await fs.mkdir(postsDir, { recursive: true });
+console.log("Existing files count:" existingFiles.length);
         
         const existingFiles = await fs.readdir(postsDir);
         const existingSlugs = existingFiles.map(file => file.replace('.md', ''));
@@ -254,14 +257,17 @@ async function main() {
         }
         
         for (const topic of topicsForThisThread) { 
+console.log("About to write file:", filePath):
             try {
                 const slug = slugify(topic);
                 if (!slug) continue;
                 
+console.log("File written successfully:", filePath);
                 const filePath = path.join(postsDir, `${slug}.md`);
 
                 let randomInterlinks = [];
                 if (allPostsForLinking.length > 0) {
+console.log("=== FILE GENERATION COMPLETED ===");
                     randomInterlinks = [...allPostsForLinking].sort(() => 0.5 - Math.random()).slice(0, 3);
                 }
                 
