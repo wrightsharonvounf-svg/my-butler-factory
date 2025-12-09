@@ -35,7 +35,6 @@ jobs:
       - name: Set API Key
         run: |
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
-          echo "GEMINI_API_KEYS_POOL=${{ secrets.GEMINI_API_KEYS_POOL }}" >> $GITHUB_ENV
 
       - name: Run Content Factory
         run: |
