@@ -1,9 +1,17 @@
+name: Generate SEO Content
+
 on:
   workflow_dispatch:
 
 jobs:
   generate-content:
     runs-on: ubuntu-latest
+    env:
+      API_KEY_CURRENT: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_API_KEY_CURRENT: ${{ secrets.GEMINI_API_KEY }}
+      THREAD_ID: 1
+      TOTAL_THREADS: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -16,9 +24,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Debug API Keys
+        run: |
+          echo "API_KEY_CURRENT length: ${#API_KEY_CURRENT}"
+          echo "GEMINI_API_KEY length: ${#GEMINI_API_KEY}"
+          echo "GEMINI_API_KEY_CURRENT length: ${#GEMINI_API_KEY_CURRENT}"
+
       - name: Run Content Factory
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           echo "Starting content generation..."
           npm run factory
