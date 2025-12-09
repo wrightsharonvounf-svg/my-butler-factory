@@ -2,23 +2,10 @@ name: Generate SEO Content
 
 on:
   workflow_dispatch:
-    inputs:
-      threads:
-        description: 'Number of threads (1-5)'
-        required: false
-        default: '1'
-      model:
-        description: 'AI Model (gemini or deepseek)'
-        required: false
-        default: 'gemini'
 
 jobs:
   generate-content:
     runs-on: ubuntu-latest
-    env:
-      THREAD_ID: 1
-      TOTAL_THREADS: ${{ github.event.inputs.threads || 1 }}
-      MODEL_CHOICE: ${{ github.event.inputs.model || 'gemini' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,27 +19,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Set API Key
+      - name: Check API Key exists
         run: |
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
-          echo "GEMINI_API_KEYS_POOL=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
-          echo "THREAD_ID=1" >> $GITHUB_ENV
-          echo "TOTAL_THREADS=1" >> $GITHUB_ENV
-
-      - name: Debug API Key
-        run: |
-          echo "API Key length: ${#GEMINI_API_KEY}"
-          if [ ${#GEMINI_API_KEY} -lt 10 ]; then
-            echo "ERROR: API Key is too short or missing!"
+          if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+            echo "ERROR: GEMINI_API_KEY secret is not set!"
+            echo "Please add it in Settings → Secrets and variables → Actions"
             exit 1
           fi
+          echo "API Key found, length: ${#{{ secrets.GEMINI_API_KEY }}}"
 
-      - name: Run Content Factory
+      - name: Run Content Factory with direct key
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          THREAD_ID: 1
+          TOTAL_THREADS: 1
         run: |
-          export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
-          export THREAD_ID=1
-          export TOTAL_THREADS=1
-          npm run factory
+          echo "Running factory with API key..."
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} THREAD_ID=1 TOTAL_THREADS=1 npm run factory
 
       - name: Commit and push generated content
         run: |
@@ -66,9 +49,3 @@ jobs:
           else
             echo "No new content generated"
           fi
-
-      - name: Trigger site rebuild
-        run: |
-          curl -X POST "https://api.github.com/repos/${{ github.repository }}/pages/builds" \
-          -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
