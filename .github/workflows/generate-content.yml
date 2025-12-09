@@ -35,9 +35,21 @@ jobs:
       - name: Set API Key
         run: |
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
+          echo "GEMINI_API_KEYS_POOL=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
+          echo "THREAD_ID=1" >> $GITHUB_ENV
+          echo "TOTAL_THREADS=1" >> $GITHUB_ENV
+
+      - name: Debug API Key
+        run: |
+          echo "API Key length: ${#GEMINI_API_KEY}"
+          if [ ${#GEMINI_API_KEY} -lt 10 ]; then
+            echo "ERROR: API Key is too short or missing!"
+            exit 1
+          fi
 
       - name: Run Content Factory
         run: |
+          export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
           export THREAD_ID=1
           export TOTAL_THREADS=1
           npm run factory
