@@ -1,14 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-// === КОНФИГУРАЦИЯ ===
-const MODEL_CHOICE = process.env.MODEL_CHOICE || 'deepseek';
+// === КОНФИГУРАЦИЯ ДЛЯ БЕСПЛАТНОЙ МОДЕЛИ ===
+const MODEL_CHOICE = 'deepseek-lite'; // Бесплатная модель
 const THREAD_ID = parseInt(process.env.THREAD_ID, 10) || 1;
 const apiKey = process.env.DEEPSEEK_API_KEY || process.env.API_KEY_CURRENT || '';
 const TOPICS_FILE = 'topics.txt';
-const BATCH_SIZE = parseInt(process.env.BATCH_SIZE, 10) || 1;
-const totalThreads = parseInt(process.env.TOTAL_THREADS, 10) || 1;
+const MAX_TOKENS = 500; // Меньше токенов для бесплатной версии
 // === КОНЕЦ КОНФИГУРАЦИИ ===
 
 // Проверка API ключа
@@ -16,15 +14,16 @@ if (!apiKey) {
     throw new Error(`[Поток #${THREAD_ID}] Не был предоставлен API-ключ!`);
 }
 
-console.log(`🚀 [Поток #${THREAD_ID}] Использую модель DeepSeek напрямую с ключом ...${apiKey.slice(-4)}`);
+console.log(`🚀 [Поток #${THREAD_ID}] Использую БЕСПЛАТНУЮ модель DeepSeek (${MODEL_CHOICE}) с ключом ...${apiKey.slice(-4)}`);
 
-// Функция для генерации контента через DeepSeek
-async function generateWithDeepSeek(prompt, maxRetries = 4) {
+// Функция для генерации контента через бесплатную модель DeepSeek
+async function generateWithDeepSeekLite(prompt, maxRetries = 3) {
     const baseUrl = 'https://api.deepseek.com/v1';
-    const model = 'deepseek-chat'; // или 'deepseek-coder' для технического контента
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
+            console.log(`[Попытка ${attempt}/${maxRetries}] Отправка запроса...`);
+            
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -32,24 +31,31 @@ async function generateWithDeepSeek(prompt, maxRetries = 4) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: model,
+                    model: MODEL_CHOICE, // Используем бесплатную модель
                     messages: [{ role: "user", content: prompt }],
                     temperature: 0.7,
-                    max_tokens: 2000
+                    max_tokens: MAX_TOKENS
                 })
             });
 
+            console.log(`Статус ответа: ${response.status}`);
+            
+            if (response.status === 402) {
+                throw new Error("Payment Required - возможно, нужна активация аккаунта");
+            }
+            
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
             }
 
             const data = await response.json();
             return data.choices[0].message.content;
             
         } catch (error) {
-            console.log(`[!] [Поток #${THREAD_ID}] Ошибка при вызове API. Попытка ${attempt}/${maxRetries}`);
+            console.log(`[!] [Поток #${THREAD_ID}] Ошибка: ${error.message}`);
             if (attempt === maxRetries) {
-                throw new Error(`Не удалось получить ответ от DeepSeek после ${maxRetries} попыток: ${error.message}`);
+                throw new Error(`Не удалось получить ответ после ${maxRetries} попыток: ${error.message}`);
             }
             // Ждем перед повторной попыткой
             await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
@@ -57,23 +63,24 @@ async function generateWithDeepSeek(prompt, maxRetries = 4) {
     }
 }
 
-// Основная функция генерации (упрощенная версия)
+// Упрощенный промпт для бесплатной модели
 async function generatePost(topic) {
     console.log(`[+] [Поток #${THREAD_ID}] Генерирую статью на тему: ${topic}`);
     
-    // Создаем промпт для генерации статьи
-    const prompt = `Напиши подробную SEO-оптимизированную статью на тему: "${topic}"
-    
+    // Упрощенный промпт для бесплатной модели
+    const prompt = `SEO статья на тему: "${topic}"
+
 Требования:
-- Объем: 1500-2000 слов
-- Структура с заголовками H2 и H3
+- Объем: 200-300 слов
+- Структура с 2-3 заголовками
 - Ключевые слова в тексте
-- Мета-описание в начале (в формате JSON)
-- Читаемый, полезный контент
-- Русский язык`;
+- Полезный контент
+- Русский язык
+
+Ответ в формате Markdown с заголовками.`;
 
     try {
-        const content = await generateWithDeepSeek(prompt);
+        const content = await generateWithDeepSeekLite(prompt);
         return content;
     } catch (error) {
         console.error(`[!] [Поток #${THREAD_ID}] Ошибка при генерации статьи: ${error.message}`);
@@ -102,7 +109,11 @@ async function main() {
         try {
             const content = await generatePost(topic);
             console.log(`[+] [Поток #${THREAD_ID}] Статья сгенерирована успешно!`);
-            console.log(`Превью первых 200 символов: ${content.substring(0, 200)}...`);
+            console.log(`Превью: ${content.substring(0, 200)}...`);
+            
+            // Сохраняем статью (минимальная реализация)
+            console.log(`[+] [Поток #${THREAD_ID}] Статья готова к сохранению`);
+            
         } catch (error) {
             console.error(`[!] [Поток #${THREAD_ID}] Ошибка при обработке темы "${topic}": ${error.message}`);
         }
