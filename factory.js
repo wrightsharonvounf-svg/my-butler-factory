@@ -208,7 +208,3 @@ main().catch(error => {
     console.log(`💥 Фатальная ошибка: ${error.message}`);
     process.exit(1);
 });
-EOF
-
-# Заменяем factory.js:
-mv light-factory.js factory.js
