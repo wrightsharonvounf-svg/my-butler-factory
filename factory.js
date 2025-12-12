@@ -4,7 +4,7 @@ import path from 'path';
 // === ЛЕГКОВЕСНАЯ КОНФИГУРАЦИЯ ===
 const API_KEY = process.env.DEEPSEEK_API_KEY || process.env.API_KEY_CURRENT || '';
 const MODEL = 'deepseek-lite'; // Самая легковесная модель
-const MAX_TOKENS = 200; // Минимум токенов
+const MAX_TOKENS = 20; // Минимум токенов
 const TEMPERATURE = 0.3; // Меньше креативности = меньше токенов
 const DELAY_BETWEEN_REQUESTS = 3000; // 3 секунды между запросами
 const MAX_RETRIES = 3; // Меньше попыток
