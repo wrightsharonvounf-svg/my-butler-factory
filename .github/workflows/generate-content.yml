@@ -1,21 +1,14 @@
-name: Generate SEO Content
+name: Generate SEO Content (Light)
 
 on:
   workflow_dispatch:
-    inputs:
-      model:
-        description: 'AI Model (gemini or deepseek)'
-        required: false
-        default: 'deepseek'
 
 jobs:
   generate-content:
     runs-on: ubuntu-latest
     env:
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-      MODEL_CHOICE: deepseek
-      THREAD_ID: 1
-      TOTAL_THREADS: 1
+      API_KEY_CURRENT: ${{ secrets.DEEPSEEK_API_KEY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -30,12 +23,12 @@ jobs:
 
       - name: Debug API Key
         run: |
-          echo "Using direct DeepSeek connection"
-          echo "API Key length: ${#DEEPSEEK_API_KEY}"
+          echo "Using lightweight generation"
+          echo "API Key set: ${{ secrets.DEEPSEEK_API_KEY != '' }}"
 
-      - name: Run Content Factory
+      - name: Run Light Content Factory
         run: |
-          echo "Starting content generation with direct DeepSeek API..."
+          echo "🚀 Starting lightweight content generation..."
           npm run factory
 
       - name: Commit and push
@@ -44,7 +37,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git add .
           if ! git diff --staged --quiet; then
-            git commit -m "Generate new content with direct DeepSeek API"
+            git commit -m "Generate lightweight content"
             git push
           else
             echo "No changes to commit"
