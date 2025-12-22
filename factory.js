@@ -15,10 +15,7 @@ console.log("=====================================");
 
 // Проверка API ключа
 if (!API_KEY) {
-    console.log("❌ ВНИМАНИЕ: DEEPSEEK_API_KEY не найден!");
-    console.log("💡 Добавьте secret в Settings → Secrets and variables → Actions");
-    console.log("💡 Name: DEEPSEEK_API_KEY");
-    console.log("💡 Value: ваш_ключ_от_deepseek");
+    console.error("❌ DEEPSEEK_API_KEY не найден!");
     process.exit(1);
 }
 
@@ -86,15 +83,33 @@ async function generateWithDeepSeek(prompt) {
     }
 }
 
-// Функция сохранения статьи
+// Функция сохранения статьи с подробной отладкой
 async function saveArticle(topic, content) {
     try {
+        console.log(`🔧 Начинаю сохранение статьи для темы: "${topic}"`);
+        
+        // Проверяем директорию
         const postsDir = 'src/content/posts';
-        await fs.promises.mkdir(postsDir, { recursive: true });
+        console.log(`🔧 Проверяю директорию: ${postsDir}`);
         
+        // Создаем директорию если её нет
+        try {
+            await fs.promises.access(postsDir);
+            console.log(`✅ Директория существует`);
+        } catch (error) {
+            console.log(`🔧 Создаю директорию...`);
+            await fs.promises.mkdir(postsDir, { recursive: true });
+            console.log(`✅ Директория создана`);
+        }
+        
+        // Создаем имя файла
         const slug = createSlug(topic);
-        const filename = path.join(postsDir, `${slug}.md`);
+        console.log(`🔧 Создан slug: "${slug}"`);
         
+        const filename = path.join(postsDir, `${slug}.md`);
+        console.log(`🔧 Полный путь к файлу: ${filename}`);
+        
+        // Создаем frontmatter
         const frontmatter = `---
 title: "${topic}"
 description: "Подробное руководство по ${topic.toLowerCase()}. Полезная информация и практические рекомендации."
@@ -104,17 +119,30 @@ author: "DeepSeek Generator"
 
 `;
 
-        if (content && content.length > 50) {
-            await fs.promises.writeFile(filename, frontmatter + content, 'utf-8');
-            console.log(`✅ Статья сохранена: ${filename}`);
-            return filename;
-        } else {
-            console.log(`❌ Содержимое слишком короткое для ${filename}`);
+        // Проверяем контент
+        if (!content || content.length < 50) {
+            console.log(`❌ Содержимое слишком короткое (${content ? content.length : 0} символов)`);
             return null;
         }
         
+        // Сохраняем файл
+        console.log(`💾 Сохраняю файл...`);
+        await fs.promises.writeFile(filename, frontmatter + content, 'utf-8');
+        console.log(`✅ Файл успешно сохранен: ${filename}`);
+        
+        // Проверяем, что файл создан
+        try {
+            const stats = await fs.promises.stat(filename);
+            console.log(`📊 Размер файла: ${stats.size} байт`);
+        } catch (error) {
+            console.log(`⚠️ Не удалось проверить файл: ${error.message}`);
+        }
+        
+        return filename;
+        
     } catch (error) {
-        console.log(`❌ Ошибка сохранения: ${error.message}`);
+        console.log(`❌ Критическая ошибка сохранения: ${error.message}`);
+        console.log(`🔧 Stack trace: ${error.stack}`);
         return null;
     }
 }
@@ -138,6 +166,7 @@ async function main() {
         }
         
         console.log(`📋 Найдено тем для генерации: ${topics.length}`);
+        console.log(`📋 Темы: ${topics.join(', ')}`);
         
         // Обрабатываем темы по batch_size
         const topicsToProcess = topics.slice(0, BATCH_SIZE);
@@ -162,8 +191,14 @@ async function main() {
             const content = await generateWithDeepSeek(prompt);
             
             if (content) {
+                console.log(`✅ Контент сгенерирован успешно!`);
                 // Сохраняем статью
-                await saveArticle(topic, content);
+                const savedFile = await saveArticle(topic, content);
+                if (savedFile) {
+                    console.log(`🎉 Статья успешно создана и сохранена!`);
+                } else {
+                    console.log(`❌ Ошибка при сохранении статьи`);
+                }
                 
                 // Пауза между запросами (кроме последнего)
                 if (i < topicsToProcess.length - 1) {
