@@ -8,7 +8,7 @@ on:
         required: false
         default: '1'
   schedule:
-    - cron: '0 3 * * *'  # Ежедневно в 03:00 UTC
+    - cron: '0 3 * * *'
 
 permissions:
   contents: write
@@ -36,8 +36,8 @@ jobs:
         run: |
           echo "🚀 Начинаю генерацию контента"
           echo "🔑 API ключ установлен: ${{ secrets.DEEPSEEK_API_KEY != '' }}"
-          if [ -n "${{ secrets.DEEPSEEK_API_KEY }}" ]; then
-            echo "📏 Длина ключа: ${#{{ secrets.DEEPSEEK_API_KEY }}} символов"
+          if [ -n "${DEEPSEEK_API_KEY}" ]; then
+            echo "📏 Длина ключа: ${#DEEPSEEK_API_KEY} символов"
           fi
           echo "📊 Batch size: $BATCH_SIZE"
 
@@ -61,14 +61,12 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Проверяем, есть ли изменения
           if ! git diff --staged --quiet || ! git diff --quiet; then
             echo "💾 Сохраняю изменения..."
             git add .
             git commit -m "Generate SEO content with DeepSeek [skip ci]"
             git push
             echo "✅ Контент успешно опубликован!"
-            echo "🔄 GitHub Pages автоматически пересоберет сайт"
           else
             echo "ℹ️ Нет новых изменений для публикации"
           fi
@@ -87,4 +85,3 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Процесс завершен: $(date)" >> $GITHUB_STEP_SUMMARY
           echo "🌐 Сайт обновится через 1-2 минуты" >> $GITHUB_STEP_SUMMARY
-          echo "📚 Проверьте новые статьи в блоге" >> $GITHUB_STEP_SUMMARY
