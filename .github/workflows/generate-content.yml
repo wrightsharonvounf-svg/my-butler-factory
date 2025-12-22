@@ -1,18 +1,19 @@
-name: Generate SEO Content (DeepSeek)
+name: Generate & Deploy Content
 
 on:
   workflow_dispatch:
     inputs:
       batch_size:
-        description: 'Количество статей для генерации'
-        required: false
+        description: 'Количество статей'
         default: '1'
+  schedule:
+    - cron: '0 3 * * *'  # Ежедневно в 03:00 UTC
 
 permissions:
   contents: write
 
 jobs:
-  generate:
+  generate-and-deploy:
     runs-on: ubuntu-latest
     env:
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -27,58 +28,27 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: |
-          npm ci
+        run: npm ci
 
-      - name: Debug environment
-        run: |
-          echo "🚀 Начинаю генерацию контента"
-          echo "🔑 API ключ установлен: ${{ secrets.DEEPSEEK_API_KEY != '' }}"
-          echo "📊 Batch size: $BATCH_SIZE"
+      - name: Generate content
+        run: npm run factory
 
-      - name: Check topics file
-        run: |
-          if [ ! -f "topics.txt" ]; then
-            echo "Тестовая статья для генерации" > topics.txt
-          fi
-
-      - name: Run DeepSeek content factory
-        run: |
-          npm run factory
-
-      - name: Commit and push generated content
+      - name: Commit and push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
-          echo "🔍 Проверяю статус Git:"
-          git status
-          
-          # Принудительно добавляем все .md файлы из posts
-          echo "💾 Добавляю новые статьи..."
-          find src/content/posts -name "*.md" -type f 2>/dev/null | while read file; do
-            if [ -f "$file" ]; then
-              echo "Добавляю: $file"
-              git add "$file"
-            fi
-          done
-          
-          # Альтернативный способ - добавляем всю директорию
-          git add src/content/posts/ 2>/dev/null || echo "Нет изменений в posts"
-          
-          # Проверяем, есть ли что коммитить
+          git add .
           if ! git diff --staged --quiet; then
-            echo "💾 Сохраняю изменения..."
-            git commit -m "Generate SEO content with DeepSeek [skip ci]"
+            git commit -m "Generate SEO content [skip ci]"
             git push
-            echo "✅ Контент успешно опубликован!"
+            echo "✅ Content published to GitHub"
           else
-            echo "ℹ️ Нет новых изменений для публикации"
+            echo "ℹ️ No new content generated"
           fi
 
-      - name: Completion summary
-        if: always()
+      - name: Wait for deployment
+        if: success()
         run: |
-          echo "## 📊 Результат генерации" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Процесс завершен: $(date)" >> $GITHUB_STEP_SUMMARY
-          echo "🌐 Сайт обновится через 1-2 минуты" >> $GITHUB_STEP_SUMMARY
+          echo "⏳ Waiting for GitHub Pages to deploy..."
+          sleep 30
+          echo "✅ Deployment should be complete. Check your site in 1-2 minutes."
