@@ -34,44 +34,17 @@ jobs:
         run: |
           echo "🚀 Начинаю генерацию контента"
           echo "🔑 API ключ установлен: ${{ secrets.DEEPSEEK_API_KEY != '' }}"
-          if [ -n "${DEEPSEEK_API_KEY}" ]; then
-            echo "📏 Длина ключа: ${#DEEPSEEK_API_KEY} символов"
-          fi
           echo "📊 Batch size: $BATCH_SIZE"
-
-      - name: Check project structure
-        run: |
-          echo "📁 Текущая структура:"
-          pwd
-          ls -la
-          echo "📁 Содержимое src:"
-          ls -la src/ 2>/dev/null || echo "Нет директории src"
-          echo "📁 Содержимое src/content:"
-          ls -la src/content/ 2>/dev/null || echo "Нет директории src/content"
-          echo "📁 Содержимое src/content/posts:"
-          ls -la src/content/posts/ 2>/dev/null || echo "Нет директории src/content/posts"
 
       - name: Check topics file
         run: |
           if [ ! -f "topics.txt" ]; then
-            echo "📝 Создаю тестовый topics.txt"
             echo "Тестовая статья для генерации" > topics.txt
           fi
-          echo "📋 Темы для генерации:"
-          cat topics.txt
 
       - name: Run DeepSeek content factory
         run: |
-          echo "🤖 Запускаю генерацию через DeepSeek..."
           npm run factory
-
-      - name: Check generated files
-        run: |
-          echo "🔍 Проверяю созданные файлы..."
-          echo "📁 Все .md файлы в проекте:"
-          find . -name "*.md" | head -10
-          echo "📁 Файлы в src/content/posts:"
-          ls -la src/content/posts/ 2>/dev/null || echo "Нет файлов"
 
       - name: Commit and push generated content
         run: |
@@ -81,22 +54,31 @@ jobs:
           echo "🔍 Проверяю статус Git:"
           git status
           
-          if ! git diff --staged --quiet || ! git diff --quiet; then
+          # Принудительно добавляем все .md файлы из posts
+          echo "💾 Добавляю новые статьи..."
+          find src/content/posts -name "*.md" -type f 2>/dev/null | while read file; do
+            if [ -f "$file" ]; then
+              echo "Добавляю: $file"
+              git add "$file"
+            fi
+          done
+          
+          # Альтернативный способ - добавляем всю директорию
+          git add src/content/posts/ 2>/dev/null || echo "Нет изменений в posts"
+          
+          # Проверяем, есть ли что коммитить
+          if ! git diff --staged --quiet; then
             echo "💾 Сохраняю изменения..."
-            git add .
             git commit -m "Generate SEO content with DeepSeek [skip ci]"
             git push
             echo "✅ Контент успешно опубликован!"
           else
             echo "ℹ️ Нет новых изменений для публикации"
-            echo "🔍 Подробная проверка статуса:"
-            git status --porcelain
           fi
 
       - name: Completion summary
         if: always()
         run: |
           echo "## 📊 Результат генерации" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Процесс завершен: $(date)" >> $GITHUB_STEP_SUMMARY
           echo "🌐 Сайт обновится через 1-2 минуты" >> $GITHUB_STEP_SUMMARY
