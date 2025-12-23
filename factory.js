@@ -4,8 +4,8 @@ import path from 'path';
 // === КОНФИГУРАЦИЯ ===
 const API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const MODEL = 'deepseek-chat';
-const MAX_TOKENS = 600;
-const BATCH_SIZE = 2; // Генерируем по 2 статьи за раз
+const MAX_TOKENS = 800;
+const BATCH_SIZE = 3; // Генерируем по 2 статьи за раз
 const DELAY_MS = 2000;
 // === КОНЕЦ КОНФИГУРАЦИИ ===
 
