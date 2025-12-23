@@ -1,23 +1,16 @@
-name: Generate & Deploy Content
+name: Content Generator
 
 on:
   workflow_dispatch:
-    inputs:
-      batch_size:
-        description: 'Количество статей'
-        default: '1'
   schedule:
-    - cron: '0 9 * * *'  # Ежедневно в 09:00 UTC
+    - cron: '0 8 * * *'  # Ежедневно в 08:00 UTC (11:00 MSK)
 
 permissions:
   contents: write
 
 jobs:
-  generate-and-deploy:
+  generate:
     runs-on: ubuntu-latest
-    env:
-      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-      BATCH_SIZE: ${{ github.event.inputs.batch_size || 1 }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,27 +21,39 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install
+
+      - name: Debug info
+        run: |
+          echo "📅 Current time: $(date)"
+          echo "🔑 API key set: ${{ secrets.DEEPSEEK_API_KEY != '' }}"
 
       - name: Generate content
-        run: npm run factory
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          if [ -f "factory.js" ]; then
+            node factory.js
+          else
+            echo "❌ factory.js not found"
+            ls -la
+            exit 1
+          fi
 
-      - name: Commit and push
+      - name: Commit changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
+          # Добавляем все изменения
           git add .
+          
+          # Проверяем, есть ли что коммитить
           if ! git diff --staged --quiet; then
-            git commit -m "Generate SEO content [skip ci]"
+            git commit -m "Daily content update"
             git push
-            echo "✅ Content published to GitHub"
+            echo "✅ Content published successfully"
           else
-            echo "ℹ️ No new content generated"
+            echo "ℹ️ No changes to commit"
           fi
-
-      - name: Wait for deployment
-        if: success()
-        run: |
-          echo "⏳ Waiting for GitHub Pages to deploy..."
-          sleep 30
-          echo "✅ Deployment should be complete. Check your site in 1-2 minutes."
