@@ -7,7 +7,7 @@ on:
         description: 'Количество статей'
         default: '1'
   schedule:
-    - cron: '0 3 * * *'  # Ежедневно в 03:00 UTC
+    - cron: '0 10 * * *'  # Ежедневно в 10:00 UTC
 
 permissions:
   contents: write
