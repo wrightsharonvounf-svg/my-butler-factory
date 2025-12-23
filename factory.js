@@ -1,30 +1,33 @@
 import fs from 'fs';
 import path from 'path';
 
-// === DEEPSEEK КОНФИГУРАЦИЯ ===
+// === КОНФИГУРАЦИЯ ===
 const API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const MODEL = 'deepseek-chat';
-const MAX_TOKENS = 800;
-const BATCH_SIZE = parseInt(process.env.BATCH_SIZE) || 1;
-const DELAY_MS = 3000;
+const MAX_TOKENS = 600;
+const BATCH_SIZE = 2; // Генерируем по 2 статьи за раз
+const DELAY_MS = 2000;
 // === КОНЕЦ КОНФИГУРАЦИИ ===
 
 console.log("=====================================");
-console.log("🤖 DEEPSEEK CONTENT FACTORY");
+console.log("🤖 DEEPSEEK CONTENT GENERATOR");
 console.log("=====================================");
 
 // Проверка API ключа
 if (!API_KEY) {
-    console.error("❌ DEEPSEEK_API_KEY не найден!");
+    console.error("❌ ОШИБКА: DEEPSEEK_API_KEY не найден!");
+    console.error("💡 Перейдите в Settings → Secrets and variables → Actions");
+    console.error("💡 Добавьте secret: DEEPSEEK_API_KEY");
     process.exit(1);
 }
 
-console.log(`✅ API ключ установлен (длина: ${API_KEY.length} символов)`);
+console.log(`✅ API ключ установлен`);
 console.log(`🚀 Модель: ${MODEL}`);
 console.log(`📊 Batch size: ${BATCH_SIZE}`);
 
 // Функция создания безопасного slug
 function createSlug(text) {
+    // Транслитерация
     const translit = {
         'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z',
         'и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r',
@@ -34,23 +37,26 @@ function createSlug(text) {
     
     let result = text.toLowerCase();
     
+    // Применяем транслитерацию
     for (let [rus, eng] of Object.entries(translit)) {
         const escaped = rus.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         result = result.replace(new RegExp(escaped, 'g'), eng);
     }
     
+    // Очистка и форматирование
     result = result.replace(/\s+/g, '-');
     result = result.replace(/[^a-z0-9\-]/g, '');
     result = result.replace(/-+/g, '-');
     result = result.replace(/^-|-$/g, '');
     
+    // Если пустой - генерируем случайный
     return result || 'article-' + Math.floor(Date.now() / 1000);
 }
 
 // Функция генерации через DeepSeek API
-async function generateWithDeepSeek(prompt) {
+async function generateContent(prompt) {
     try {
-        console.log("📡 Отправка запроса к DeepSeek...");
+        console.log("📡 Отправка запроса...");
         
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -78,148 +84,132 @@ async function generateWithDeepSeek(prompt) {
         return content;
         
     } catch (error) {
-        console.log(`❌ Ошибка API: ${error.message}`);
+        console.error(`❌ Ошибка API: ${error.message}`);
         return null;
     }
 }
 
-// Функция сохранения статьи с подробной отладкой
+// Функция сохранения статьи
 async function saveArticle(topic, content) {
     try {
-        console.log(`🔧 Начинаю сохранение статьи для темы: "${topic}"`);
-        
-        // Проверяем директорию
-        const postsDir = 'src/content/posts';
-        console.log(`🔧 Проверяю директорию: ${postsDir}`);
+        console.log(`💾 Сохраняю статью: "${topic}"`);
         
         // Создаем директорию если её нет
-        try {
-            await fs.promises.access(postsDir);
-            console.log(`✅ Директория существует`);
-        } catch (error) {
-            console.log(`🔧 Создаю директорию...`);
-            await fs.promises.mkdir(postsDir, { recursive: true });
-            console.log(`✅ Директория создана`);
-        }
+        const postsDir = 'src/content/posts';
+        await fs.promises.mkdir(postsDir, { recursive: true });
         
         // Создаем имя файла
         const slug = createSlug(topic);
-        console.log(`🔧 Создан slug: "${slug}"`);
-        
         const filename = path.join(postsDir, `${slug}.md`);
-        console.log(`🔧 Полный путь к файлу: ${filename}`);
         
         // Создаем frontmatter
         const frontmatter = `---
 title: "${topic}"
 description: "Подробное руководство по ${topic.toLowerCase()}. Полезная информация и практические рекомендации."
 pubDate: "${new Date().toISOString().split('T')[0]}"
-author: "DeepSeek Generator"
+author: "AI Content Generator"
 ---
 
 `;
 
-        // Проверяем контент
-        if (!content || content.length < 50) {
-            console.log(`❌ Содержимое слишком короткое (${content ? content.length : 0} символов)`);
+        // Проверяем и сохраняем контент
+        if (content && content.length > 100) {
+            await fs.promises.writeFile(filename, frontmatter + content, 'utf-8');
+            console.log(`✅ Статья сохранена: ${filename}`);
+            return filename;
+        } else {
+            console.error(`❌ Контент слишком короткий для ${filename}`);
             return null;
         }
         
-        // Сохраняем файл
-        console.log(`💾 Сохраняю файл...`);
-        await fs.promises.writeFile(filename, frontmatter + content, 'utf-8');
-        console.log(`✅ Файл успешно сохранен: ${filename}`);
-        
-        // Проверяем, что файл создан
-        try {
-            const stats = await fs.promises.stat(filename);
-            console.log(`📊 Размер файла: ${stats.size} байт`);
-        } catch (error) {
-            console.log(`⚠️ Не удалось проверить файл: ${error.message}`);
-        }
-        
-        return filename;
-        
     } catch (error) {
-        console.log(`❌ Критическая ошибка сохранения: ${error.message}`);
-        console.log(`🔧 Stack trace: ${error.stack}`);
+        console.error(`❌ Ошибка сохранения: ${error.message}`);
         return null;
     }
 }
 
-// Основная функция
+// Основная функция генерации
 async function main() {
-    console.log("🚀 Запуск генерации контента...");
+    console.log("🚀 Начинаю генерацию контента...");
     
     try {
-        // Читаем темы из файла
+        // Читаем темы
         console.log("📂 Читаю topics.txt...");
-        const topicsContent = await fs.promises.readFile('topics.txt', 'utf-8');
-        const topics = topicsContent
-            .split(/\r?\n/)
-            .map(topic => topic.trim())
-            .filter(topic => topic.length > 0);
         
-        if (topics.length === 0) {
-            console.log("📭 Файл topics.txt пуст или не найден");
-            return;
+        let topics = [];
+        if (fs.existsSync('topics.txt')) {
+            const topicsContent = await fs.promises.readFile('topics.txt', 'utf-8');
+            topics = topicsContent
+                .split(/\r?\n/)
+                .map(topic => topic.trim())
+                .filter(topic => topic.length > 0);
         }
         
-        console.log(`📋 Найдено тем для генерации: ${topics.length}`);
-        console.log(`📋 Темы: ${topics.join(', ')}`);
+        // Если нет topics.txt - создаем тестовые темы
+        if (topics.length === 0) {
+            console.log("📝 Создаю тестовые темы...");
+            topics = [
+                "Как выбрать автомобиль в 2024 году",
+                "Ремонт двигателя: основные принципы",
+                "Советы по экономии топлива"
+            ];
+            
+            // Сохраняем тестовые темы
+            fs.writeFileSync('topics.txt', topics.join('\n'));
+        }
         
-        // Обрабатываем темы по batch_size
+        console.log(`📋 Найдено тем: ${topics.length}`);
+        
+        // Обрабатываем ограниченное количество тем
         const topicsToProcess = topics.slice(0, BATCH_SIZE);
         console.log(`🎯 Буду обрабатывать: ${topicsToProcess.length} тем`);
         
+        // Генерируем статьи
         for (let i = 0; i < topicsToProcess.length; i++) {
             const topic = topicsToProcess[i];
-            console.log(`\n📝 Обрабатываю тему ${i + 1}/${topicsToProcess.length}: "${topic}"`);
+            console.log(`\n📝 Тема ${i + 1}/${topicsToProcess.length}: "${topic}"`);
             
-            // Создаем промпт для генерации
+            // Создаем промпт
             const prompt = `Напиши SEO-оптимизированную статью на тему: "${topic}"
 
 Требования:
-- Объем: 400-600 слов
-- Структура с заголовками (H1, H2)
-- Полезный, информативный контент
+- Объем: 300-500 слов
+- Структура с заголовками
+- Полезный контент
 - Русский язык
 
-Формат ответа: Только статья в формате Markdown.`;
+Ответ строго в формате Markdown.`;
             
             // Генерируем контент
-            const content = await generateWithDeepSeek(prompt);
+            const content = await generateContent(prompt);
             
             if (content) {
-                console.log(`✅ Контент сгенерирован успешно!`);
                 // Сохраняем статью
                 const savedFile = await saveArticle(topic, content);
                 if (savedFile) {
-                    console.log(`🎉 Статья успешно создана и сохранена!`);
-                } else {
-                    console.log(`❌ Ошибка при сохранении статьи`);
+                    console.log(`🎉 Успешно! Статья создана.`);
                 }
                 
                 // Пауза между запросами (кроме последнего)
                 if (i < topicsToProcess.length - 1) {
-                    console.log(`⏳ Пауза ${DELAY_MS}ms перед следующим запросом...`);
+                    console.log(`⏳ Пауза ${DELAY_MS}ms...`);
                     await new Promise(resolve => setTimeout(resolve, DELAY_MS));
                 }
             } else {
-                console.log(`❌ Не удалось сгенерировать статью для темы: "${topic}"`);
+                console.error(`❌ Не удалось сгенерировать статью`);
             }
         }
         
         console.log("\n=====================================");
-        console.log("✅ Генерация контента завершена!");
+        console.log("✅ ГЕНЕРАЦИЯ ЗАВЕРШЕНА!");
         console.log(`Обработано тем: ${topicsToProcess.length}`);
         console.log("=====================================");
         
     } catch (error) {
-        console.log(`💥 Критическая ошибка: ${error.message}`);
+        console.error(`💥 КРИТИЧЕСКАЯ ОШИБКА: ${error.message}`);
         process.exit(1);
     }
 }
 
-// Запуск
+// Запуск генератора
 main();
