@@ -1,15 +1,15 @@
-name: Content Generator
+name: Auto Generate & Deploy
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * *'  # Ежедневно в 08:00 UTC (11:00 MSK)
+    - cron: '0 9 * * *'  # Ежедневно в 09:00 UTC (12:00 MSK)
 
 permissions:
   contents: write
 
 jobs:
-  generate:
+  generate-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -22,27 +22,40 @@ jobs:
 
       - name: Install dependencies
         run: |
+          echo "📦 Устанавливаю зависимости..."
           npm install
+          echo "✅ Зависимости установлены"
 
-      - name: Debug info
+      - name: Debug environment
         run: |
-          echo "📅 Current time: $(date)"
-          echo "🔑 API key set: ${{ secrets.DEEPSEEK_API_KEY != '' }}"
+          echo "🚀 Начинаю процесс генерации"
+          echo "🔑 API ключ: ${{ secrets.DEEPSEEK_API_KEY != '' }}"
+          echo "📅 Время запуска: $(date)"
+
+      - name: Check topics
+        run: |
+          if [ ! -f "topics.txt" ]; then
+            echo "📝 Создаю тестовый topics.txt"
+            echo "Как выбрать автомобиль" > topics.txt
+            echo "Ремонт двигателя" >> topics.txt
+            echo "Экономия топлива" >> topics.txt
+          fi
+          echo "📋 Темы для генерации:"
+          head -5 topics.txt
 
       - name: Generate content
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
-          if [ -f "factory.js" ]; then
-            node factory.js
-          else
-            echo "❌ factory.js not found"
-            ls -la
-            exit 1
-          fi
+          echo "🤖 Запускаю генерацию контента..."
+          node factory.js
+          echo "✅ Генерация завершена"
 
-      - name: Commit changes
+      - name: Deploy to GitHub Pages
         run: |
+          echo "📤 Начинаю деплой..."
+          
+          # Настраиваем Git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
@@ -51,9 +64,19 @@ jobs:
           
           # Проверяем, есть ли что коммитить
           if ! git diff --staged --quiet; then
-            git commit -m "Daily content update"
+            echo "💾 Сохраняю изменения..."
+            git commit -m "Auto-generate content $(date +%Y-%m-%d)"
             git push
-            echo "✅ Content published successfully"
+            echo "✅ Контент успешно опубликован!"
+            echo "🌐 Сайт обновится через 1-2 минуты"
           else
-            echo "ℹ️ No changes to commit"
+            echo "ℹ️ Нет новых изменений для публикации"
           fi
+
+      - name: Completion summary
+        if: always()
+        run: |
+          echo "## 📊 Результат" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Процесс завершен: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 Сайт: https://kovric.store/blog/" >> $GITHUB_STEP_SUMMARY
+          echo "🕐 Следующий запуск: завтра в 12:00 MSK" >> $GITHUB_STEP_SUMMARY
