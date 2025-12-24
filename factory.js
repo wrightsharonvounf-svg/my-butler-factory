@@ -2,10 +2,10 @@ import fs from 'fs';
 import path from 'path';
 
 // === КОНФИГУРАЦИЯ ===
-const API_KEY = process.env.DEEPSEEK_API_KEY || '';
+const API_KEY = process.env.DEEPSEEK_API_KEY || process.env.API_KEY_CURRENT || '';
 const MODEL = 'deepseek-chat';
-const MAX_TOKENS = 800;
-const BATCH_SIZE = 3; // Генерируем по 2 статьи за раз
+const MAX_TOKENS = 600;
+const BATCH_SIZE = 2;
 const DELAY_MS = 2000;
 // === КОНЕЦ КОНФИГУРАЦИИ ===
 
@@ -15,19 +15,17 @@ console.log("=====================================");
 
 // Проверка API ключа
 if (!API_KEY) {
-    console.error("❌ ОШИБКА: DEEPSEEK_API_KEY не найден!");
-    console.error("💡 Перейдите в Settings → Secrets and variables → Actions");
-    console.error("💡 Добавьте secret: DEEPSEEK_API_KEY");
+    console.error("❌ ОШИБКА: API ключ не найден!");
+    console.error("💡 Установите DEEPSEEK_API_KEY в переменных окружения");
     process.exit(1);
 }
 
-console.log(`✅ API ключ установлен`);
+console.log(`✅ API ключ установлен (длина: ${API_KEY.length})`);
 console.log(`🚀 Модель: ${MODEL}`);
 console.log(`📊 Batch size: ${BATCH_SIZE}`);
 
 // Функция создания безопасного slug
 function createSlug(text) {
-    // Транслитерация
     const translit = {
         'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z',
         'и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r',
@@ -37,19 +35,16 @@ function createSlug(text) {
     
     let result = text.toLowerCase();
     
-    // Применяем транслитерацию
     for (let [rus, eng] of Object.entries(translit)) {
         const escaped = rus.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         result = result.replace(new RegExp(escaped, 'g'), eng);
     }
     
-    // Очистка и форматирование
     result = result.replace(/\s+/g, '-');
     result = result.replace(/[^a-z0-9\-]/g, '');
     result = result.replace(/-+/g, '-');
     result = result.replace(/^-|-$/g, '');
     
-    // Если пустой - генерируем случайный
     return result || 'article-' + Math.floor(Date.now() / 1000);
 }
 
@@ -94,15 +89,12 @@ async function saveArticle(topic, content) {
     try {
         console.log(`💾 Сохраняю статью: "${topic}"`);
         
-        // Создаем директорию если её нет
         const postsDir = 'src/content/posts';
         await fs.promises.mkdir(postsDir, { recursive: true });
         
-        // Создаем имя файла
         const slug = createSlug(topic);
         const filename = path.join(postsDir, `${slug}.md`);
         
-        // Создаем frontmatter
         const frontmatter = `---
 title: "${topic}"
 description: "Подробное руководство по ${topic.toLowerCase()}. Полезная информация и практические рекомендации."
@@ -112,7 +104,6 @@ author: "AI Content Generator"
 
 `;
 
-        // Проверяем и сохраняем контент
         if (content && content.length > 100) {
             await fs.promises.writeFile(filename, frontmatter + content, 'utf-8');
             console.log(`✅ Статья сохранена: ${filename}`);
@@ -128,34 +119,33 @@ author: "AI Content Generator"
     }
 }
 
-// Основная функция генерации
+// Основная функция
 async function main() {
     console.log("🚀 Начинаю генерацию контента...");
     
     try {
-        // Читаем темы
+        // Читаем темы из файла
         console.log("📂 Читаю topics.txt...");
         
-        let topics = [];
-        if (fs.existsSync('topics.txt')) {
-            const topicsContent = await fs.promises.readFile('topics.txt', 'utf-8');
-            topics = topicsContent
-                .split(/\r?\n/)
-                .map(topic => topic.trim())
-                .filter(topic => topic.length > 0);
+        if (!fs.existsSync('topics.txt')) {
+            console.error("❌ Файл topics.txt не найден!");
+            console.error("💡 Создайте файл topics.txt с темами для генерации");
+            console.error("💡 Пример содержимого:");
+            console.error("   Как выбрать автомобиль");
+            console.error("   Ремонт двигателя");
+            process.exit(1);
         }
         
-        // Если нет topics.txt - создаем тестовые темы
+        const topicsContent = await fs.promises.readFile('topics.txt', 'utf-8');
+        const topics = topicsContent
+            .split(/\r?\n/)
+            .map(topic => topic.trim())
+            .filter(topic => topic.length > 0);
+        
         if (topics.length === 0) {
-            console.log("📝 Создаю тестовые темы...");
-            topics = [
-                "Как выбрать автомобиль в 2024 году",
-                "Ремонт двигателя: основные принципы",
-                "Советы по экономии топлива"
-            ];
-            
-            // Сохраняем тестовые темы
-            fs.writeFileSync('topics.txt', topics.join('\n'));
+            console.error("❌ Файл topics.txt пуст!");
+            console.error("💡 Добавьте темы в файл topics.txt");
+            process.exit(1);
         }
         
         console.log(`📋 Найдено тем: ${topics.length}`);
@@ -169,7 +159,6 @@ async function main() {
             const topic = topicsToProcess[i];
             console.log(`\n📝 Тема ${i + 1}/${topicsToProcess.length}: "${topic}"`);
             
-            // Создаем промпт
             const prompt = `Напиши SEO-оптимизированную статью на тему: "${topic}"
 
 Требования:
@@ -180,17 +169,15 @@ async function main() {
 
 Ответ строго в формате Markdown.`;
             
-            // Генерируем контент
             const content = await generateContent(prompt);
             
             if (content) {
-                // Сохраняем статью
                 const savedFile = await saveArticle(topic, content);
                 if (savedFile) {
                     console.log(`🎉 Успешно! Статья создана.`);
                 }
                 
-                // Пауза между запросами (кроме последнего)
+                // Пауза между запросами
                 if (i < topicsToProcess.length - 1) {
                     console.log(`⏳ Пауза ${DELAY_MS}ms...`);
                     await new Promise(resolve => setTimeout(resolve, DELAY_MS));
@@ -211,5 +198,4 @@ async function main() {
     }
 }
 
-// Запуск генератора
 main();
