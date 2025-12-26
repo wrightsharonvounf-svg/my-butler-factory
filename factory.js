@@ -1,22 +1,25 @@
 import fs from 'fs';
 import path from 'path';
 
-// === КОНФИГУРАЦИЯ ===
-const API_KEY = process.env.DEEPSEEK_API_KEY || process.env.API_KEY_CURRENT || '';
+// === ПРАВИЛЬНАЯ КОНФИГУРАЦИЯ ===
+// ИСПОЛЬЗУЕМ ТОЛЬКО DEEPSEEK_API_KEY
+const API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const MODEL = 'deepseek-chat';
-const MAX_TOKENS = 600;
-const BATCH_SIZE = 2;
+const MAX_TOKENS = 500;
+const BATCH_SIZE = 1; // Начнем с одной статьи
 const DELAY_MS = 2000;
 // === КОНЕЦ КОНФИГУРАЦИИ ===
 
 console.log("=====================================");
-console.log("🤖 DEEPSEEK CONTENT GENERATOR");
+console.log("🤖 DEEPSEEK CONTENT GENERATOR v2.0");
 console.log("=====================================");
 
-// Проверка API ключа
+// Проверка API ключа - теперь правильно!
 if (!API_KEY) {
-    console.error("❌ ОШИБКА: API ключ не найден!");
-    console.error("💡 Установите DEEPSEEK_API_KEY в переменных окружения");
+    console.error("❌ КРИТИЧЕСКАЯ ОШИБКА: DEEPSEEK_API_KEY не найден!");
+    console.error("💡 Установите переменную окружения:");
+    console.error("   export DEEPSEEK_API_KEY=sk-ваш_новый_ключ");
+    console.error("💡 Или добавьте в GitHub Secrets");
     process.exit(1);
 }
 
@@ -49,14 +52,14 @@ function createSlug(text) {
 }
 
 // Функция генерации через DeepSeek API
-async function generateContent(prompt) {
+async function generateWithDeepSeek(prompt) {
     try {
-        console.log("📡 Отправка запроса...");
+        console.log("📡 Отправка запроса к DeepSeek...");
         
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${API_KEY}`,
+                'Authorization': `Bearer ${API_KEY}`, // ПРАВИЛЬНЫЙ ЗАГОЛОВОК!
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -97,9 +100,9 @@ async function saveArticle(topic, content) {
         
         const frontmatter = `---
 title: "${topic}"
-description: "Подробное руководство по ${topic.toLowerCase()}. Полезная информация и практические рекомендации."
+description: "Подробное руководство по ${topic.toLowerCase()}"
 pubDate: "${new Date().toISOString().split('T')[0]}"
-author: "AI Content Generator"
+author: "DeepSeek Generator"
 ---
 
 `;
@@ -119,21 +122,18 @@ author: "AI Content Generator"
     }
 }
 
-// Основная функция
+// Основная функция генерации
 async function main() {
     console.log("🚀 Начинаю генерацию контента...");
     
     try {
-        // Читаем темы из файла
-        console.log("📂 Читаю topics.txt...");
+        // Проверяем topics.txt
+        console.log("📂 Проверяю topics.txt...");
         
         if (!fs.existsSync('topics.txt')) {
-            console.error("❌ Файл topics.txt не найден!");
-            console.error("💡 Создайте файл topics.txt с темами для генерации");
-            console.error("💡 Пример содержимого:");
-            console.error("   Как выбрать автомобиль");
-            console.error("   Ремонт двигателя");
-            process.exit(1);
+            console.log("📝 Создаю тестовый topics.txt...");
+            const testTopics = "Тестовая статья для генерации\nПример SEO контента";
+            fs.writeFileSync('topics.txt', testTopics);
         }
         
         const topicsContent = await fs.promises.readFile('topics.txt', 'utf-8');
@@ -143,59 +143,38 @@ async function main() {
             .filter(topic => topic.length > 0);
         
         if (topics.length === 0) {
-            console.error("❌ Файл topics.txt пуст!");
-            console.error("💡 Добавьте темы в файл topics.txt");
+            console.error("❌ topics.txt пуст!");
             process.exit(1);
         }
         
         console.log(`📋 Найдено тем: ${topics.length}`);
         
-        // Обрабатываем ограниченное количество тем
-        const topicsToProcess = topics.slice(0, BATCH_SIZE);
-        console.log(`🎯 Буду обрабатывать: ${topicsToProcess.length} тем`);
+        // Обрабатываем одну тему для теста
+        const topic = topics[0];
+        console.log(`\n📝 Генерирую: "${topic}"`);
         
-        // Генерируем статьи
-        for (let i = 0; i < topicsToProcess.length; i++) {
-            const topic = topicsToProcess[i];
-            console.log(`\n📝 Тема ${i + 1}/${topicsToProcess.length}: "${topic}"`);
-            
-            const prompt = `Напиши SEO-оптимизированную статью на тему: "${topic}"
-
-Требования:
-- Объем: 300-500 слов
-- Структура с заголовками
-- Полезный контент
-- Русский язык
-
-Ответ строго в формате Markdown.`;
-            
-            const content = await generateContent(prompt);
-            
-            if (content) {
-                const savedFile = await saveArticle(topic, content);
-                if (savedFile) {
-                    console.log(`🎉 Успешно! Статья создана.`);
-                }
-                
-                // Пауза между запросами
-                if (i < topicsToProcess.length - 1) {
-                    console.log(`⏳ Пауза ${DELAY_MS}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-                }
-            } else {
-                console.error(`❌ Не удалось сгенерировать статью`);
+        const prompt = `Краткая SEO статья (200-300 слов) о: "${topic}". Только Markdown.`;
+        
+        const content = await generateWithDeepSeek(prompt);
+        
+        if (content) {
+            const savedFile = await saveArticle(topic, content);
+            if (savedFile) {
+                console.log(`🎉 УСПЕХ! Статья создана.`);
             }
+        } else {
+            console.error(`❌ Не удалось сгенерировать статью`);
         }
         
         console.log("\n=====================================");
         console.log("✅ ГЕНЕРАЦИЯ ЗАВЕРШЕНА!");
-        console.log(`Обработано тем: ${topicsToProcess.length}`);
         console.log("=====================================");
         
     } catch (error) {
-        console.error(`💥 КРИТИЧЕСКАЯ ОШИБКА: ${error.message}`);
+        console.error(`💥 ОШИБКА: ${error.message}`);
         process.exit(1);
     }
 }
 
+// Запуск генератора
 main();
